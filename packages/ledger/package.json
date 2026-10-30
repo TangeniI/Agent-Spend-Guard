@@ -2,17 +2,14 @@
   "name": "@asg/ledger",
   "version": "0.0.0",
   "private": true,
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./testing": "./dist/testing.js"
-  },
-  "typesVersions": {
-    "*": {
-      "testing": [
-        "dist/testing.d.ts"
-      ]
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
     }
   },
   "scripts": {
@@ -31,5 +28,6 @@
     "@vitest/coverage-v8": "^5.0.5",
     "drizzle-kit": "^0.31.11",
     "vitest": "^5.0.5"
-  }
+  },
+  "type": "module"
 }
