@@ -68,7 +68,8 @@ that invents a fresh key on retry cannot defeat the dedupe.
 
 - **Mandate:** what the user allowed. `budget_minor`, `currency`, `per_item_limit_minor`,
   `allowed_merchant_categories[]`, `blocked_merchants[]`, `max_quantity_per_item`,
-  `approval_threshold_minor`, `expires_at`, `status` (active, paused, revoked).
+  `approval_threshold_minor`, `split_window_minutes`, `expires_at`, `status` (active, paused,
+  revoked), `kill_switch`. Budget and currency are stored on the ledger's `balances` row only.
 - **PaymentProposal:** what the agent asked for, stored exactly as received, including the raw
   tool-call JSON.
 - **Decision:** `APPROVE`, `REJECT` or `NEEDS_APPROVAL`, plus a list of reason codes
@@ -87,11 +88,13 @@ that invents a fresh key on retry cannot defeat the dedupe.
 3. The currency matches the mandate.
 4. The amount is a positive integer in minor units. Reject floats, negatives and zero.
 5. The merchant is in the registry, its registered category is allowed and it isn't blocked.
-6. The amount is within `per_item_limit_minor` and the quantity within `max_quantity_per_item`.
+6. Each line's unit price is within `per_item_limit_minor` and its quantity within
+   `max_quantity_per_item`. The amount must equal the sum of quantity times unit price.
 7. Spent plus held plus this amount is within the budget. The ledger enforces this under a row lock;
    the policy check here is a fast pre-check, never the only check.
 8. **Split-purchase detection:** several proposals to the same merchant within N minutes whose sum
-   exceeds the per-item limit get `SPLIT_PURCHASE_SUSPECTED` and go to approval.
+   exceeds the per-item limit get `SPLIT_PURCHASE_SUSPECTED` and go to approval. Only executed and
+   held payments count, since a rejected one moved nothing.
 9. Anything at or above `approval_threshold_minor` goes to `NEEDS_APPROVAL`.
 10. Text the agent writes (the `reason` field) is logged but **never** read by the policy engine,
     and never forwarded to the merchant. Policy decisions must not depend on free text the LLM
