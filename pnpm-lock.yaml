@@ -20,6 +20,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@asg/agent':
+        specifier: workspace:^
+        version: link:../../packages/agent
       '@asg/ledger':
         specifier: workspace:^
         version: link:../../packages/ledger
@@ -45,6 +48,9 @@ importers:
         specifier: ^7.8.2
         version: 7.8.2
     devDependencies:
+      '@asg/shop':
+        specifier: workspace:^
+        version: link:../shop
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
