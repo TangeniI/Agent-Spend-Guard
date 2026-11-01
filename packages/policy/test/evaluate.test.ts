@@ -51,7 +51,7 @@ function context(overrides: Partial<Context> = {}): Context {
 /** Lists each proposed item at its proposed price, so a test only varies what it is about. */
 function run(p: Proposal, m: Mandate | null, c: Context) {
   const listed: Record<string, CatalogueEntry> = Object.fromEntries(
-    p.items.map((i) => [i.sku, { unitPriceMinor: i.unitPriceMinor, currency: 'GBP' }]),
+    p.items.map((i) => [i.sku, { unitPriceMinor: i.unitPriceMinor, currency: p.currency }]),
   );
   return evaluate(p, m, { ...c, catalogue: { ...listed, ...c.catalogue } });
 }

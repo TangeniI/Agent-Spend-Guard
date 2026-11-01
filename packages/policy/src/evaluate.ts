@@ -1,24 +1,43 @@
-import type { Context, Decision, Mandate, Proposal, ReasonCode } from './types.js';
+import type { Context, Decision, LineItem, Mandate, Proposal, ReasonCode } from './types.js';
 
 const isPositiveMinor = (value: number) => Number.isSafeInteger(value) && value > 0;
 
-function itemReasons(proposal: Proposal, mandate: Mandate): ReasonCode[] {
+function catalogueReason(item: LineItem, currency: string, context: Context): ReasonCode | null {
+  if (!Object.hasOwn(context.catalogue, item.sku)) return 'UNKNOWN_ITEM';
+  const listed = context.catalogue[item.sku]!;
+  return listed.unitPriceMinor === item.unitPriceMinor && listed.currency === currency
+    ? null
+    : 'PRICE_MISMATCH';
+}
+
+function quantityBySku(items: LineItem[]) {
+  const totals = new Map<string, number>();
+  for (const item of items) totals.set(item.sku, (totals.get(item.sku) ?? 0) + item.quantity);
+  return [...totals.values()];
+}
+
+function itemReasons(proposal: Proposal, mandate: Mandate, context: Context): ReasonCode[] {
   const { items, amountMinor } = proposal;
   const valid =
     items.length > 0 &&
     items.every((i) => isPositiveMinor(i.quantity) && isPositiveMinor(i.unitPriceMinor));
   if (!valid) return ['INVALID_ITEMS'];
 
-  const reasons: ReasonCode[] = [];
+  const reasons = new Set<ReasonCode>();
+  for (const item of items) {
+    const reason = catalogueReason(item, proposal.currency, context);
+    if (reason) reasons.add(reason);
+  }
+
   const total = items.reduce((sum, i) => sum + i.quantity * i.unitPriceMinor, 0);
-  if (isPositiveMinor(amountMinor) && total !== amountMinor) reasons.push('AMOUNT_ITEMS_MISMATCH');
+  if (isPositiveMinor(amountMinor) && total !== amountMinor) reasons.add('AMOUNT_ITEMS_MISMATCH');
   if (items.some((i) => i.unitPriceMinor > mandate.perItemLimitMinor)) {
-    reasons.push('OVER_PER_ITEM_LIMIT');
+    reasons.add('OVER_PER_ITEM_LIMIT');
   }
-  if (items.some((i) => i.quantity > mandate.maxQuantityPerItem)) {
-    reasons.push('OVER_QUANTITY_LIMIT');
+  if (quantityBySku(items).some((quantity) => quantity > mandate.maxQuantityPerItem)) {
+    reasons.add('OVER_QUANTITY_LIMIT');
   }
-  return reasons;
+  return [...reasons];
 }
 
 function isSplitPurchase(proposal: Proposal, mandate: Mandate, context: Context) {
@@ -55,7 +74,7 @@ export function evaluate(
     rejections.push('MERCHANT_NOT_ALLOWED');
   }
 
-  rejections.push(...itemReasons(proposal, mandate));
+  rejections.push(...itemReasons(proposal, mandate, context));
 
   const committed = context.spentMinor + context.heldMinor;
   if (validAmount && committed + proposal.amountMinor > mandate.budgetMinor) {
