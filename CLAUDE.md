@@ -61,8 +61,10 @@ user task + mandate
 
 The agent's only way to spend is the `propose_payment` tool. It has no other tool that touches money.
 
-The model never supplies the idempotency key. The tool wrapper derives it server-side, so a model
-that invents a fresh key on retry cannot defeat the dedupe.
+The model never supplies the idempotency key. The tool wrapper derives it server-side from the run
+and the proposal's structured fields, so a model that invents a fresh key or rewords a retry cannot
+defeat the dedupe. `read_page` can only reach the shop, so a page cannot leak the mandate through a
+URL. Pages are not sanitised: the guard has to hold even when the model is fully fooled.
 
 ## Domain model
 
@@ -80,6 +82,9 @@ that invents a fresh key on retry cannot defeat the dedupe.
 - **Merchant registry:** server-side table of known merchants and their categories. A merchant's
   category always comes from here, never from the proposal, and unknown merchants are denied by
   default.
+- **Catalogue:** server-side prices per merchant and SKU, loaded from `apps/shop/catalogue.json`.
+  Each proposed line must match it. This relies on the shop being a mock with a known catalogue; a
+  real deployment would need signed merchant quotes or similar, and the README must say so.
 
 ## Policy rules (all deterministic, all unit-tested)
 
@@ -88,8 +93,9 @@ that invents a fresh key on retry cannot defeat the dedupe.
 3. The currency matches the mandate.
 4. The amount is a positive integer in minor units. Reject floats, negatives and zero.
 5. The merchant is in the registry, its registered category is allowed and it isn't blocked.
-6. Each line's unit price is within `per_item_limit_minor` and its quantity within
-   `max_quantity_per_item`. The amount must equal the sum of quantity times unit price.
+6. Each line's unit price matches the catalogue and is within `per_item_limit_minor`. Quantities are
+   totalled per SKU and must be within `max_quantity_per_item`. The amount must equal the sum of
+   quantity times unit price.
 7. Spent plus held plus this amount is within the budget. The ledger enforces this under a row lock;
    the policy check here is a fast pre-check, never the only check.
 8. **Split-purchase detection:** several proposals to the same merchant within N minutes whose sum
