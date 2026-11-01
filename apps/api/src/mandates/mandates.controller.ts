@@ -30,12 +30,20 @@ function toDate(value: unknown) {
   return date;
 }
 
+const MAX_INT = 2_147_483_647;
+
 function windowMinutes(value: unknown) {
   if (value === undefined) return 10;
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0 || value > MAX_INT) {
     throw new InvalidRequestError('splitWindowMinutes must be a non-negative integer');
   }
   return value;
+}
+
+function maxQuantity(value: unknown) {
+  assertPositiveMinor(value, 'maxQuantityPerItem');
+  if ((value as number) > MAX_INT) throw new InvalidRequestError('maxQuantityPerItem is too large');
+  return value as number;
 }
 
 @Controller('mandates')
@@ -51,14 +59,13 @@ export class MandatesController {
     const input = body ?? {};
     assertPositiveMinor(input.perItemLimitMinor, 'perItemLimitMinor');
     assertPositiveMinor(input.approvalThresholdMinor, 'approvalThresholdMinor');
-    assertPositiveMinor(input.maxQuantityPerItem, 'maxQuantityPerItem');
 
     const id = randomUUID();
     const values = {
       id,
       perItemLimitMinor: input.perItemLimitMinor as number,
       approvalThresholdMinor: input.approvalThresholdMinor as number,
-      maxQuantityPerItem: input.maxQuantityPerItem as number,
+      maxQuantityPerItem: maxQuantity(input.maxQuantityPerItem),
       allowedMerchantCategories: stringArray(
         input.allowedMerchantCategories,
         'allowedMerchantCategories',

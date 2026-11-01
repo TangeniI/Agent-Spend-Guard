@@ -42,6 +42,8 @@ describe('mandates', () => {
     ['a float limit', { perItemLimitMinor: 1.5 }],
     ['a zero threshold', { approvalThresholdMinor: 0 }],
     ['a zero quantity', { maxQuantityPerItem: 0 }],
+    ['an oversized quantity', { maxQuantityPerItem: 2 ** 40 }],
+    ['an oversized split window', { splitWindowMinutes: 2 ** 40 }],
     ['a bad currency', { currency: 'pounds' }],
     ['bad categories', { allowedMerchantCategories: 'accessories' }],
     ['bad blocked merchants', { blockedMerchants: [1] }],
@@ -56,8 +58,11 @@ describe('mandates', () => {
 
   it('leaves no balance behind when creation fails', async () => {
     const before = await app.db.execute('select count(*)::int as n from balances');
-    // Passes validation, then overflows the integer column after the balance row is written.
-    const response = await app.api('POST', '/mandates', { ...valid, maxQuantityPerItem: 2 ** 40 });
+    // A valid date Postgres can't store, so this fails after the balance row is written.
+    const response = await app.api('POST', '/mandates', {
+      ...valid,
+      expiresAt: '-004800-01-01T00:00:00Z',
+    });
     expect(response.status).toBe(500);
     const after = await app.db.execute('select count(*)::int as n from balances');
     expect(after.rows).toEqual(before.rows);
