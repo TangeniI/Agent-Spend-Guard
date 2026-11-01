@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: asg
+          POSTGRES_PASSWORD: asg
+          POSTGRES_DB: asg
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U asg -d asg"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgres://asg:asg@localhost:5433/asg
+      TEST_ADMIN_DATABASE_URL: postgres://asg:asg@localhost:5433/postgres
+      API_SERVICE_TOKEN: ci-only-token
+      API_URL: http://localhost:3001
+      PORT: 3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test
+      - run: pnpm db:migrate
+      - name: Start API
+        run: |
+          pnpm --filter @asg/api start &
+          for attempt in $(seq 1 30); do
+            curl -sf "$API_URL/health" && exit 0
+            sleep 1
+          done
+          echo "API did not become healthy" && exit 1
+      - run: pnpm concurrency
