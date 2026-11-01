@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { createDb, migrate } from '@asg/ledger';
 import { createTestDatabase } from '@asg/ledger/testing';
 import { AppModule } from '../src/app.module.js';
+import type { RunsOptions } from '../src/runs/runs.module.js';
 
 const TOKEN = 'test-service-token';
 
@@ -19,14 +20,16 @@ export interface TestApp {
   stop: () => Promise<void>;
 }
 
-export async function startApp(): Promise<TestApp> {
+export async function startApp(options?: RunsOptions): Promise<TestApp> {
   const testDb = await createTestDatabase();
   const seed = createDb(testDb.url);
   await migrate(seed.db);
 
   process.env.DATABASE_URL = testDb.url;
   process.env.API_SERVICE_TOKEN = TOKEN;
-  const app: INestApplication = await NestFactory.create(AppModule, { logger: false });
+  const app: INestApplication = await NestFactory.create(AppModule.register(options), {
+    logger: false,
+  });
   await app.listen(0);
   const baseUrl = await app.getUrl();
 

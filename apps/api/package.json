@@ -8,11 +8,13 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@asg/shop": "workspace:^",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.6",
     "vitest": "^5.0.5"
   },
   "dependencies": {
+    "@asg/agent": "workspace:^",
     "@asg/ledger": "workspace:^",
     "@asg/policy": "workspace:^",
     "@nestjs/common": "^12.3.2",
