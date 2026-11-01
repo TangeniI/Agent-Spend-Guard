@@ -8,6 +8,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -32,6 +33,8 @@ export const decisionOutcome = pgEnum('decision_outcome', [
 ]);
 
 export const auditActor = pgEnum('audit_actor', ['agent', 'policy', 'human', 'system']);
+
+export const runStatus = pgEnum('run_status', ['running', 'completed', 'failed']);
 
 /** One row per mandate. Every money decision locks this row first. */
 export const balances = pgTable(
@@ -168,4 +171,50 @@ export const auditEvents = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('audit_events_mandate_created_idx').on(t.mandateId, t.createdAt)],
+);
+
+/** A merchant's own prices. Proposed prices are checked against this, never trusted. */
+export const catalogueItems = pgTable(
+  'catalogue_items',
+  {
+    merchant: text('merchant')
+      .notNull()
+      .references(() => merchants.name),
+    sku: text('sku').notNull(),
+    name: text('name').notNull(),
+    unitPriceMinor: bigint('unit_price_minor', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.merchant, t.sku] }),
+    check('catalogue_items_price_positive', sql`${t.unitPriceMinor} > 0`),
+  ],
+);
+
+export const agentRuns = pgTable('agent_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  mandateId: uuid('mandate_id')
+    .notNull()
+    .references(() => mandates.id),
+  task: text('task').notNull(),
+  status: runStatus('status').notNull().default('running'),
+  result: text('result'),
+  error: text('error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+});
+
+export const agentSteps = pgTable(
+  'agent_steps',
+  {
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => agentRuns.id),
+    seq: integer('seq').notNull(),
+    type: text('type').notNull(),
+    payload: jsonb('payload').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.runId, t.seq] })],
 );
