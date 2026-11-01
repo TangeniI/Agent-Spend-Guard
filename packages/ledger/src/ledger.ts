@@ -164,11 +164,11 @@ const noRecheck: Recheck = () => [];
 
 export function createLedger(db: LedgerDb) {
   return {
-    async openBalance(input: OpenBalanceInput) {
+    async openBalance(input: OpenBalanceInput, client: LedgerDb | LedgerTx = db) {
       assertUuid(input.mandateId, 'mandateId');
       assertCurrency(input.currency);
       assertPositiveMinor(input.budgetMinor, 'budgetMinor');
-      await db.insert(balances).values(input);
+      await client.insert(balances).values(input);
     },
 
     async getBalance(mandateId: string): Promise<Balance> {
@@ -201,15 +201,16 @@ export function createLedger(db: LedgerDb) {
           return toResult(existing, true);
         }
 
-        let decision: Decision;
-        if (input.currency !== balance.currency) {
-          decision = { action: 'reject', reasons: ['CURRENCY_MISMATCH'] };
-        } else {
-          decision = await decide({ tx, balance });
-        }
+        // decide runs before the ledger's own checks so policy can log every proposal.
+        let decision = await decide({ tx, balance });
 
         const committed = balance.spentMinor + balance.heldMinor;
-        if (decision.action !== 'reject' && committed + input.amountMinor > balance.budgetMinor) {
+        if (input.currency !== balance.currency) {
+          decision = { action: 'reject', reasons: ['CURRENCY_MISMATCH'] };
+        } else if (
+          decision.action !== 'reject' &&
+          committed + input.amountMinor > balance.budgetMinor
+        ) {
           decision = { action: 'reject', reasons: ['BUDGET_EXCEEDED'] };
         }
 
