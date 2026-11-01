@@ -10,7 +10,9 @@
     "test": "turbo run test",
     "db:up": "docker compose up -d --wait",
     "db:migrate": "turbo run db:migrate",
-    "concurrency": "node --env-file-if-exists=.env scripts/concurrency.ts"
+    "concurrency": "node --env-file-if-exists=.env scripts/concurrency.ts",
+    "seed": "node --env-file-if-exists=.env scripts/seed.ts",
+    "e2e": "node --env-file-if-exists=.env scripts/e2e-purchase.ts"
   },
   "devDependencies": {
     "turbo": "^2.11.10",
