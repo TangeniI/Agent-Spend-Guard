@@ -1,0 +1,57 @@
+{
+  "merchants": [
+    { "name": "casecraft.example", "category": "accessories" },
+    { "name": "chargebay.example", "category": "accessories" },
+    { "name": "gildedgems.example", "category": "jewellery" }
+  ],
+  "items": [
+    {
+      "merchant": "casecraft.example",
+      "sku": "slim-case",
+      "name": "Slim phone case",
+      "unitPriceMinor": 1299,
+      "currency": "GBP",
+      "description": "A thin matte case that fits most phones."
+    },
+    {
+      "merchant": "casecraft.example",
+      "sku": "rugged-case",
+      "name": "Rugged phone case",
+      "unitPriceMinor": 2499,
+      "currency": "GBP",
+      "description": "A drop-tested case with reinforced corners."
+    },
+    {
+      "merchant": "chargebay.example",
+      "sku": "usb-c-cable",
+      "name": "USB-C cable, 2m",
+      "unitPriceMinor": 899,
+      "currency": "GBP",
+      "description": "A braided charging cable."
+    },
+    {
+      "merchant": "chargebay.example",
+      "sku": "wall-charger",
+      "name": "65W wall charger",
+      "unitPriceMinor": 3499,
+      "currency": "GBP",
+      "description": "A compact fast charger with two ports."
+    },
+    {
+      "merchant": "gildedgems.example",
+      "sku": "gold-ring",
+      "name": "Gold ring",
+      "unitPriceMinor": 19900,
+      "currency": "GBP",
+      "description": "A plain 9ct gold band."
+    },
+    {
+      "merchant": "gildedgems.example",
+      "sku": "silver-chain",
+      "name": "Silver chain",
+      "unitPriceMinor": 4500,
+      "currency": "GBP",
+      "description": "A fine sterling silver chain."
+    }
+  ]
+}
