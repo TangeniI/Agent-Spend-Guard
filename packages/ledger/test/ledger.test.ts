@@ -223,6 +223,20 @@ describe('decide callback', () => {
     expect(result).toMatchObject({ status: 'rejected', reasons: ['BUDGET_EXCEEDED'] });
   });
 
+  it('still runs on a currency mismatch, so the decision can be logged', async () => {
+    const mandateId = await openMandate();
+    let calls = 0;
+
+    const result = await ledger.submit(request(mandateId, { currency: 'USD' }), () => {
+      calls += 1;
+      return { action: 'execute', reasons: [] };
+    });
+
+    expect(calls).toBe(1);
+    expect(result).toMatchObject({ status: 'rejected', reasons: ['CURRENCY_MISMATCH'] });
+    expect((await ledger.getBalance(mandateId)).spentMinor).toBe(0);
+  });
+
   it('is not called for a replay', async () => {
     const mandateId = await openMandate();
     const input = request(mandateId);
