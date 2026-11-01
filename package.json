@@ -3,13 +3,14 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "engines": {
-    "node": ">=22.9"
+    "node": ">=22.18"
   },
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
     "db:up": "docker compose up -d --wait",
-    "db:migrate": "turbo run db:migrate"
+    "db:migrate": "turbo run db:migrate",
+    "concurrency": "node --env-file-if-exists=.env scripts/concurrency.ts"
   },
   "devDependencies": {
     "turbo": "^2.11.10",
