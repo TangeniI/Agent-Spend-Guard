@@ -1,5 +1,5 @@
 export interface LineItem {
-  name: string;
+  sku: string;
   quantity: number;
   unitPriceMinor: number;
 }
@@ -31,6 +31,12 @@ export interface RecentPayment {
   at: Date;
 }
 
+/** A merchant's own price for a SKU, held server-side. */
+export interface CatalogueEntry {
+  unitPriceMinor: number;
+  currency: string;
+}
+
 export interface Context {
   now: Date;
   /** From the merchant registry. Null means the merchant is not registered. */
@@ -39,6 +45,8 @@ export interface Context {
   heldMinor: number;
   /** Executed and held payments to this merchant. Rejected ones moved nothing. */
   recentToMerchant: RecentPayment[];
+  /** This merchant's catalogue by SKU. A proposed price is checked against it, never trusted. */
+  catalogue: Record<string, CatalogueEntry>;
 }
 
 export type Outcome = 'APPROVE' | 'REJECT' | 'NEEDS_APPROVAL';
@@ -52,6 +60,8 @@ export type ReasonCode =
   | 'INVALID_AMOUNT'
   | 'INVALID_ITEMS'
   | 'AMOUNT_ITEMS_MISMATCH'
+  | 'UNKNOWN_ITEM'
+  | 'PRICE_MISMATCH'
   | 'MERCHANT_UNKNOWN'
   | 'MERCHANT_NOT_ALLOWED'
   | 'OVER_PER_ITEM_LIMIT'
