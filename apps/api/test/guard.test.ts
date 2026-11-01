@@ -67,7 +67,7 @@ describe('guard', () => {
 
     const result = await propose(proposal(mandateId, 'partner-store.example'));
 
-    expect(result).toMatchObject({ status: 'rejected', reasons: ['MERCHANT_UNKNOWN'] });
+    expect(result).toMatchObject({ status: 'rejected', reasons: ['MERCHANT_UNKNOWN', 'UNKNOWN_ITEM'] });
     expect((await balance(mandateId)).spentMinor).toBe(0);
     expect(await proposalsFor(mandateId)).toHaveLength(1);
   });
@@ -104,10 +104,42 @@ describe('guard', () => {
     expect(JSON.stringify(rows)).not.toContain(reason);
   });
 
+  it('rejects a price the merchant does not charge', async () => {
+    const mandateId = await app.createMandate();
+    const merchant = await app.registerMerchant();
+    const items = [{ sku: 'sku-1000', quantity: 1, unitPriceMinor: 1 }];
+
+    const result = await propose(proposal(mandateId, merchant, { amountMinor: 1, items }));
+
+    expect(result).toMatchObject({ status: 'rejected', reasons: ['PRICE_MISMATCH'] });
+  });
+
+  it('rejects an item the merchant does not sell', async () => {
+    const mandateId = await app.createMandate();
+    const merchant = await app.registerMerchant();
+    const items = [{ sku: 'made-up', quantity: 1, unitPriceMinor: 1_000 }];
+
+    const result = await propose(proposal(mandateId, merchant, { items }));
+
+    expect(result).toMatchObject({ status: 'rejected', reasons: ['UNKNOWN_ITEM'] });
+  });
+
+  it('keeps the audit log append-only', async () => {
+    const mandateId = await app.createMandate();
+
+    await expect(
+      app.db.delete(auditEvents).where(eq(auditEvents.mandateId, mandateId)),
+    ).rejects.toThrow();
+    await expect(
+      app.db.update(auditEvents).set({ type: 'X' }).where(eq(auditEvents.mandateId, mandateId)),
+    ).rejects.toThrow();
+    await expect(app.db.execute('TRUNCATE audit_events')).rejects.toThrow();
+  });
+
   it('places a hold for NEEDS_APPROVAL', async () => {
     const mandateId = await app.createMandate();
     const merchant = await app.registerMerchant();
-    const items = [{ name: 'Case', quantity: 2, unitPriceMinor: 4_000 }];
+    const items = [{ sku: 'sku-4000', quantity: 2, unitPriceMinor: 4_000 }];
 
     const result = await propose(proposal(mandateId, merchant, { amountMinor: 8_000, items }));
 
@@ -138,7 +170,7 @@ describe('guard', () => {
   it('catches a split purchase fired concurrently', async () => {
     const mandateId = await app.createMandate();
     const merchant = await app.registerMerchant();
-    const items = [{ name: 'Case', quantity: 1, unitPriceMinor: 3_000 }];
+    const items = [{ sku: 'sku-3000', quantity: 1, unitPriceMinor: 3_000 }];
 
     const results = await Promise.all(
       Array.from({ length: 5 }, () =>
@@ -156,8 +188,8 @@ describe('guard', () => {
   it('does not count rejected payments towards a split', async () => {
     const mandateId = await app.createMandate({ budgetMinor: 3_000 });
     const merchant = await app.registerMerchant();
-    const big = { amountMinor: 3_001, items: [{ name: 'A', quantity: 1, unitPriceMinor: 3_001 }] };
-    const fits = { amountMinor: 3_000, items: [{ name: 'B', quantity: 1, unitPriceMinor: 3_000 }] };
+    const big = { amountMinor: 3_001, items: [{ sku: 'sku-3001', quantity: 1, unitPriceMinor: 3_001 }] };
+    const fits = { amountMinor: 3_000, items: [{ sku: 'sku-3000', quantity: 1, unitPriceMinor: 3_000 }] };
 
     expect((await propose(proposal(mandateId, merchant, big))).status).toBe('rejected');
     expect((await propose(proposal(mandateId, merchant, fits))).status).toBe('executed');
@@ -188,7 +220,7 @@ describe('guard', () => {
   it('rejects malformed items through the ledger', async () => {
     const mandateId = await app.createMandate();
     const body = proposal(mandateId, await app.registerMerchant(), {
-      items: [{ name: 'Case', quantity: '1', unitPriceMinor: 1_000 }],
+      items: [{ sku: 'sku-1000', quantity: '1', unitPriceMinor: 1_000 }],
     });
     expect(await propose(body)).toMatchObject({ status: 'rejected', reasons: ['INVALID_ITEMS'] });
   });

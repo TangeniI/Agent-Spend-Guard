@@ -22,7 +22,7 @@ interface Proposal {
   merchant: string;
   amountMinor: number;
   currency: string;
-  items: { name: string; quantity: number; unitPriceMinor: number }[];
+  items: { sku: string; quantity: number; unitPriceMinor: number }[];
   reason: string;
 }
 
@@ -103,9 +103,19 @@ const unique: Proposal[] = amounts.map((amountMinor, i) => ({
   merchant: merchants[i % MERCHANT_COUNT]!,
   amountMinor,
   currency: 'GBP',
-  items: [{ name: 'Load test item', quantity: 1, unitPriceMinor: amountMinor }],
+  items: [{ sku: `sku-${i}`, quantity: 1, unitPriceMinor: amountMinor }],
   reason: 'Concurrency test.',
 }));
+await mustPost('/catalogue', {
+  items: unique.map(({ merchant, items, amountMinor, currency }) => ({
+    merchant,
+    sku: items[0]!.sku,
+    name: 'Load test item',
+    unitPriceMinor: amountMinor,
+    currency,
+  })),
+});
+
 const retries = shuffle(unique).slice(0, RETRIES);
 const requests = shuffle([...unique, ...retries]);
 

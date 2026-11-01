@@ -4,6 +4,7 @@ import {
   assertUuid,
   auditEvents,
   balances,
+  catalogueItems,
   decisions,
   IdempotencyConflictError,
   mandates,
@@ -52,7 +53,7 @@ const numberOrNaN = (value: unknown) => (typeof value === 'number' ? value : Num
 function toItem(value: unknown): LineItem {
   const item = isRecord(value) ? value : {};
   return {
-    name: stringOr(item.name, ''),
+    sku: stringOr(item.sku, ''),
     quantity: numberOrNaN(item.quantity),
     unitPriceMinor: numberOrNaN(item.unitPriceMinor),
   };
@@ -181,6 +182,11 @@ export class GuardService {
         ),
       );
 
+    const listed = await tx
+      .select()
+      .from(catalogueItems)
+      .where(eq(catalogueItems.merchant, proposal.merchant));
+
     const policyMandate: Mandate = {
       ...mandate,
       currency: balance.currency,
@@ -192,6 +198,7 @@ export class GuardService {
       spentMinor: balance.spentMinor,
       heldMinor: balance.heldMinor,
       recentToMerchant: recent,
+      catalogue: Object.fromEntries(listed.map((item) => [item.sku, item])),
     });
   }
 

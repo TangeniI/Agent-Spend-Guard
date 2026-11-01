@@ -7,6 +7,9 @@ import { AppModule } from '../src/app.module.js';
 
 const TOKEN = 'test-service-token';
 
+/** Every test merchant sells `sku-<price>` at each of these prices. */
+const LISTED_PRICES = [1_000, 3_000, 3_001, 4_000];
+
 export interface TestApp {
   db: ReturnType<typeof createDb>['db'];
   baseUrl: string;
@@ -58,6 +61,15 @@ export async function startApp(): Promise<TestApp> {
     async registerMerchant(name = `${randomUUID()}.example`, category = 'accessories') {
       const response = await api('POST', '/merchants', { name, category });
       if (response.status !== 201) throw new Error(await response.text());
+      const items = LISTED_PRICES.map((unitPriceMinor) => ({
+        merchant: name,
+        sku: `sku-${unitPriceMinor}`,
+        name: `Item at ${unitPriceMinor}`,
+        unitPriceMinor,
+        currency: 'GBP',
+      }));
+      const listed = await api('POST', '/catalogue', { items });
+      if (listed.status !== 201) throw new Error(await listed.text());
       return name;
     },
     async stop() {
@@ -75,7 +87,7 @@ export function proposal(mandateId: string, merchant: string, overrides: object 
     merchant,
     amountMinor: 1_000,
     currency: 'GBP',
-    items: [{ name: 'Phone case', quantity: 1, unitPriceMinor: 1_000 }],
+    items: [{ sku: 'sku-1000', quantity: 1, unitPriceMinor: 1_000 }],
     reason: 'The user asked for a phone case.',
     ...overrides,
   };
