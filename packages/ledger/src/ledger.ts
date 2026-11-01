@@ -57,25 +57,25 @@ export type Recheck = (context: LockedContext) => string[] | Promise<string[]>;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CURRENCY = /^[A-Z]{3}$/;
 
-function assertPositiveMinor(value: unknown, field: string) {
+export function assertPositiveMinor(value: unknown, field: string) {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
     throw new InvalidRequestError(`${field} must be a positive integer in minor units`);
   }
 }
 
-function assertNonEmpty(value: unknown, field: string) {
+export function assertNonEmpty(value: unknown, field: string) {
   if (typeof value !== 'string' || value.length === 0) {
     throw new InvalidRequestError(`${field} must be a non-empty string`);
   }
 }
 
-function assertUuid(value: unknown, field: string) {
+export function assertUuid(value: unknown, field: string) {
   if (typeof value !== 'string' || !UUID.test(value)) {
     throw new InvalidRequestError(`${field} must be a UUID`);
   }
 }
 
-function assertCurrency(value: unknown) {
+export function assertCurrency(value: unknown) {
   if (typeof value !== 'string' || !CURRENCY.test(value)) {
     throw new InvalidRequestError('currency must be a three-letter uppercase code');
   }
@@ -93,7 +93,7 @@ function toResult(
   };
 }
 
-async function lockBalance(tx: LedgerTx, mandateId: string) {
+export async function lockBalance(tx: LedgerTx, mandateId: string) {
   const [balance] = await tx
     .select()
     .from(balances)
