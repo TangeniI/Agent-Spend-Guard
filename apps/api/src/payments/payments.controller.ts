@@ -1,36 +1,16 @@
-import { Body, Controller, Inject, Post, Res } from '@nestjs/common';
-import type { Ledger } from '@asg/ledger';
+import { Body, Controller, Inject, Post, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
-
-export const LEDGER = Symbol('LEDGER');
-
-interface PaymentBody {
-  mandateId: string;
-  idempotencyKey: string;
-  merchant: string;
-  amountMinor: number;
-  currency: string;
-}
+import { ServiceTokenGuard } from '../auth/service-token.guard.js';
+import { GuardService } from '../guard/guard.service.js';
 
 @Controller('payments')
+@UseGuards(ServiceTokenGuard)
 export class PaymentsController {
-  constructor(@Inject(LEDGER) private readonly ledger: Ledger) {}
+  constructor(@Inject(GuardService) private readonly guard: GuardService) {}
 
-  // Ledger only for now. The policy engine goes in front of this at the next milestone.
   @Post()
-  async submit(
-    @Body() body: Partial<PaymentBody> | undefined,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    const { mandateId, idempotencyKey, merchant, amountMinor, currency } = body ?? {};
-    // The ledger validates every field, so these unchecked values never reach the database.
-    const result = await this.ledger.submit({
-      mandateId,
-      idempotencyKey,
-      merchant,
-      amountMinor,
-      currency,
-    } as PaymentBody);
+  async submit(@Body() body: unknown, @Res({ passthrough: true }) response: Response) {
+    const result = await this.guard.propose(body);
     response.status(result.replayed ? 200 : 201);
     return result;
   }
