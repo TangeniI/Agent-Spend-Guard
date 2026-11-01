@@ -176,7 +176,7 @@ describe('evaluate', () => {
       });
     });
 
-    it('applies the limit per unit, so three cheap items can total more than it', () => {
+    it('applies the limit per unit, so several cheap items can total more than it', () => {
       const items = [item({ quantity: 2, unitPriceMinor: 3_000 })];
       const result = evaluate(proposal({ amountMinor: 6_000, items }), mandate(), context());
       expect(result.outcome).toBe('APPROVE');
