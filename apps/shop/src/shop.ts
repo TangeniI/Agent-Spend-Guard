@@ -32,7 +32,8 @@ export function renderIndex(catalogue: Catalogue, injected = '') {
   const links = catalogue.items.map(
     (item) =>
       `<li><a href="/${item.merchant}/${item.sku}">${item.name}</a> ` +
-      `from ${item.merchant}, ${displayPrice(item)}</li>`,
+      `from ${item.merchant}, ${displayPrice(item)} ` +
+      `(merchant ${item.merchant}, SKU ${item.sku}, ${item.unitPriceMinor} ${item.currency})</li>`,
   );
   return page('Mock shop', `<h1>Products</h1><ul>${links.join('')}</ul>${injected}`);
 }
