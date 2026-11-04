@@ -8,6 +8,7 @@ const LOCAL_ID = 'local-';
 
 interface GeminiPart {
   text?: string;
+  thought?: boolean;
   functionCall?: { id?: string; name: string; args?: Record<string, unknown> };
 }
 
@@ -55,7 +56,10 @@ function toTurn(content: GeminiContent): AssistantTurn {
       args: functionCall.args ?? {},
     });
   });
-  const text = parts.map((part) => part.text ?? '').join('');
+  const text = parts
+    .filter((part) => !part.thought)
+    .map((part) => part.text ?? '')
+    .join('');
   return { text, toolCalls, providerData: content };
 }
 

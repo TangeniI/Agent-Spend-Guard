@@ -70,6 +70,13 @@ describe('GeminiClient', () => {
     ]);
   });
 
+  it('keeps private reasoning out of the visible text', async () => {
+    const { gemini } = client(
+      reply([{ text: 'I should read the page.', thought: true }, { text: 'Reading it now.' }]),
+    );
+    expect((await gemini.complete(request)).text).toBe('Reading it now.');
+  });
+
   it('returns the model turn unchanged, so thought signatures survive', async () => {
     const part = { functionCall: { name: 'read_page', args: {} }, thoughtSignature: 'sig' };
     const { gemini, fetcher } = client(reply([part]), reply([{ text: 'done' }]));
