@@ -24,5 +24,11 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
-  "type": "module"
+  "type": "module",
+  "exports": {
+    "./app": {
+      "types": "./dist/app.module.d.ts",
+      "default": "./dist/app.module.js"
+    }
+  }
 }
