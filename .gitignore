@@ -8,3 +8,7 @@ coverage/
 .next/
 next-env.d.ts
 redteam/results/partial.json
+
+# Local working notes, kept out of the public repo
+CLAUDE.md
+docs/portfolio-handoff.md
