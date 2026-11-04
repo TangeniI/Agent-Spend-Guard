@@ -24,7 +24,7 @@ import {
   type LlmClient,
   type PageSource,
 } from '@asg/agent';
-import { asc, eq } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 import { DB, type DbHandle } from '../database/database.module.js';
 import { GuardService } from '../guard/guard.service.js';
 
@@ -77,6 +77,16 @@ export class RunsService {
     void this.execute(this.llm, run!.id, mandateId, task, system);
 
     return { id: run!.id, status: run!.status };
+  }
+
+  list(mandateId: string | undefined) {
+    if (mandateId !== undefined) assertUuid(mandateId, 'mandateId');
+    return this.db
+      .select()
+      .from(agentRuns)
+      .where(mandateId ? eq(agentRuns.mandateId, mandateId) : undefined)
+      .orderBy(desc(agentRuns.createdAt))
+      .limit(50);
   }
 
   async get(id: string) {
