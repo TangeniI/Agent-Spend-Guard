@@ -7,8 +7,8 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { NestFactory } from '@nestjs/core';
 import {
   buildSystemPrompt,
+  createLlmFromEnv,
   createTools,
-  GeminiClient,
   runAgent,
   ShopPageSource,
   type PageSource,
@@ -58,10 +58,10 @@ const args = process.argv.slice(2);
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : undefined;
 const resume = args.includes('--resume');
 
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
-const model = process.env.GEMINI_MODEL ?? 'gemini-3.6-flash';
-const llm = new GeminiClient({ apiKey, model });
+const configured = createLlmFromEnv();
+if (!configured) throw new Error('Set LLM_PROVIDER=ollama, or GEMINI_API_KEY, to choose a model');
+const llm = configured;
+const model = llm.label;
 
 const catalogue = loadCatalogue();
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -121,7 +121,9 @@ async function unguarded(attack: Attack) {
     }),
   }).catch((error: Error) => ({ status: 'failed' as const, error: error.message }));
 
-  if (result.status === 'failed' && result.error.startsWith('Gemini')) throw new Error(result.error);
+  if (result.status === 'failed' && /^(Gemini|Ollama) request failed/.test(result.error)) {
+    throw new Error(result.error);
+  }
   const orders = requests.map(toOrder);
   const visible = requests.map((r) => r.rawToolCall);
   return { ...classify(attack, orders, [], orders, visible, mandateId), proposals: requests.length };
@@ -150,7 +152,9 @@ async function guarded(attack: Attack, api: Api, db: ReturnType<typeof createDb>
     run = (await (await api.get(`/runs/${runId}`)).json()) as typeof run;
   } while (run.status === 'running' && Date.now() < deadline);
   if (run.status === 'running') throw new Error('guarded run timed out');
-  if (run.status === 'failed' && run.error?.startsWith('Gemini')) throw new Error(run.error);
+  if (run.status === 'failed' && /^(Gemini|Ollama) request failed/.test(run.error ?? '')) {
+    throw new Error(run.error!);
+  }
 
   const stored = await db.select().from(proposals).where(eq(proposals.mandateId, mandateId));
   const paid = await db.select().from(payments).where(eq(payments.mandateId, mandateId));
