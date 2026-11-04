@@ -90,9 +90,9 @@ export default function RunPage() {
         {data.status === 'running' && <li className="animate-pulse text-sm text-stone-500">Thinking…</li>}
       </ol>
 
-      {data.status !== 'running' && (
+      {data.status === 'failed' && (
         <Card className="mt-6">
-          <p className="text-sm">{data.result ?? data.error}</p>
+          <p className="text-sm text-red-600">{data.error}</p>
         </Card>
       )}
     </>
