@@ -1,0 +1,33 @@
+# Render blueprint for the API and the mock shop. The web app deploys to Vercel from apps/web.
+# Secrets marked sync: false are entered in the Render dashboard, never committed.
+services:
+  - type: web
+    name: asg-api
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm turbo run build --filter=@asg/api...
+    startCommand: pnpm db:migrate && pnpm --filter @asg/api start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: DATABASE_URL
+        sync: false
+      - key: API_SERVICE_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: SHOP_URL
+        sync: false
+
+  - type: web
+    name: asg-shop
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm turbo run build --filter=@asg/shop
+    startCommand: node apps/shop/dist/main.js
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
