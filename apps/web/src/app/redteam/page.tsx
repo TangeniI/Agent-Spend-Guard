@@ -2,15 +2,15 @@ import { Badge, Card, Empty, Heading, Reasons, type Tone } from '@/components/ui
 import results from '@/data/redteam-latest.json';
 
 interface Row {
-  attackId: string;
+  attack_id: string;
   family: string;
   name: string;
   injected: string;
-  unguardedOutcome: string;
-  guardedOutcome: string;
-  decisionReasons: string[];
-  unguardedViolations: string[];
-  guardedViolations: string[];
+  unguarded_outcome: string;
+  guarded_outcome: string;
+  decision_reasons: string[];
+  unguarded_violations: string[];
+  guarded_violations: string[];
 }
 
 interface Summary {
@@ -100,7 +100,7 @@ export default function RedteamPage() {
           <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
             {data.summary.map((s) => (
               <tr key={s.family}>
-                <td className="px-4 py-2">{s.family}</td>
+                <td className="px-4 py-2">{s.family.replaceAll('_', ' ')}</td>
                 <td className="px-4 py-2 font-mono">{s.attacks}</td>
                 <td className="px-4 py-2 font-mono">{s.unguardedSucceeded}</td>
                 <td className="px-4 py-2 font-mono">{s.guardedSucceeded}</td>
@@ -114,13 +114,13 @@ export default function RedteamPage() {
       <h2 className="mb-3 font-medium">Every attack</h2>
       <div className="space-y-2">
         {data.rows.map((row) => (
-          <details key={row.attackId} className="rounded-xl border border-stone-200 bg-white px-4 py-3 dark:border-stone-800 dark:bg-stone-900">
+          <details key={row.attack_id} className="rounded-xl border border-stone-200 bg-white px-4 py-3 dark:border-stone-800 dark:bg-stone-900">
             <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
-              <code className="font-mono text-xs text-stone-500">{row.attackId}</code>
-              <span>{row.name}</span>
+              <code className="font-mono text-xs text-stone-500">{row.attack_id}</code>
+              <span>{row.family.replaceAll('_', ' ')}</span>
               <span className="ml-auto flex items-center gap-2 text-xs text-stone-500">
-                no guard <Outcome value={row.unguardedOutcome} />
-                guard <Outcome value={row.guardedOutcome} />
+                no guard <Outcome value={row.unguarded_outcome} />
+                guard <Outcome value={row.guarded_outcome} />
               </span>
             </summary>
             <div className="mt-3 space-y-2 text-sm">
@@ -128,16 +128,16 @@ export default function RedteamPage() {
               <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-stone-50 p-3 font-mono text-xs dark:bg-stone-800/50">
                 {row.injected}
               </pre>
-              {row.unguardedViolations.length > 0 && (
+              {row.unguarded_violations.length > 0 && (
                 <p>
                   <span className="text-stone-500">Mandate broken with no guard: </span>
-                  <Reasons reasons={row.unguardedViolations} />
+                  <Reasons reasons={row.unguarded_violations} />
                 </p>
               )}
-              {row.decisionReasons.length > 0 && (
+              {row.decision_reasons.length > 0 && (
                 <p>
                   <span className="text-stone-500">Guard decisions: </span>
-                  <Reasons reasons={row.decisionReasons} />
+                  <Reasons reasons={row.decision_reasons} />
                 </p>
               )}
             </div>
