@@ -127,6 +127,38 @@ describe('GeminiClient', () => {
     expect(sleep.mock.calls).toEqual([[2_000], [4_000]]);
   });
 
+  it('retries a request that times out or drops', async () => {
+    const timeout = Object.assign(new Error('timed out'), { name: 'TimeoutError' });
+    const fetcher = vi
+      .fn()
+      .mockRejectedValueOnce(timeout)
+      .mockResolvedValueOnce(reply([{ text: 'ok' }]));
+    const gemini = new GeminiClient({
+      apiKey: 'k',
+      model: 'm',
+      fetch: fetcher as unknown as typeof fetch,
+      sleep: async () => undefined,
+    });
+
+    expect((await gemini.complete(request)).text).toBe('ok');
+    const init = (fetcher.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('gives up after repeated timeouts', async () => {
+    const timeout = Object.assign(new Error('timed out'), { name: 'TimeoutError' });
+    const fetcher = vi.fn().mockRejectedValue(timeout);
+    const gemini = new GeminiClient({
+      apiKey: 'k',
+      model: 'm',
+      fetch: fetcher as unknown as typeof fetch,
+      sleep: async () => undefined,
+    });
+
+    await expect(gemini.complete(request)).rejects.toThrow('Gemini request failed: TimeoutError');
+    expect(fetcher).toHaveBeenCalledTimes(4);
+  });
+
   it('honours Retry-After', async () => {
     const { gemini, sleep } = client(
       new Response('{}', { status: 429, headers: { 'retry-after': '7' } }),

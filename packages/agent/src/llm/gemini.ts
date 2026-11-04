@@ -5,6 +5,7 @@ const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_RETRIES = 3;
 const RETRYABLE = new Set([429, 500, 503]);
 const LOCAL_ID = 'local-';
+const TIMEOUT_MS = 120_000;
 
 interface GeminiPart {
   text?: string;
@@ -22,6 +23,7 @@ export interface GeminiOptions {
   model: string;
   fetch?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
+  timeoutMs?: number;
 }
 
 function toFunctionResponse({ id, name, output }: ToolResult) {
@@ -88,14 +90,25 @@ export class GeminiClient implements LlmClient {
     });
 
     for (let attempt = 0; ; attempt += 1) {
-      const response = await this.fetch(`${BASE_URL}/${this.options.model}:generateContent`, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-goog-api-key': this.options.apiKey,
-        },
-        body,
-      });
+      let response: Response;
+      try {
+        response = await this.fetch(`${BASE_URL}/${this.options.model}:generateContent`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-goog-api-key': this.options.apiKey,
+          },
+          body,
+          signal: AbortSignal.timeout(this.options.timeoutMs ?? TIMEOUT_MS),
+        });
+      } catch (error) {
+        // A stalled or dropped connection is retried like a 503, so one hang cannot stop a run.
+        if (attempt === MAX_RETRIES) {
+          throw new Error(`Gemini request failed: ${(error as Error).name}`);
+        }
+        await this.sleep(2_000 * 2 ** attempt);
+        continue;
+      }
 
       if (response.ok) {
         const { candidates } = (await response.json()) as {
