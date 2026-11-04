@@ -11,7 +11,7 @@ import {
   UnknownMandateError,
   type Ledger,
 } from '@asg/ledger';
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { ServiceTokenGuard } from '../auth/service-token.guard.js';
 import { DB, LEDGER, type DbHandle } from '../database/database.module.js';
 
@@ -90,6 +90,17 @@ export class MandatesController {
         .values({ type: 'MANDATE_CREATED', actor: 'human', mandateId: id, payload: values });
       return mandate;
     });
+  }
+
+  @Get()
+  async list() {
+    const rows = await this.handle.db
+      .select({ mandate: mandates, balance: balances })
+      .from(mandates)
+      .innerJoin(balances, eq(mandates.id, balances.mandateId))
+      .orderBy(desc(mandates.createdAt))
+      .limit(100);
+    return rows.map((row) => ({ ...row.mandate, balance: row.balance }));
   }
 
   @Get(':id')
