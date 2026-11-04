@@ -73,10 +73,12 @@ async function errorMessage(response: Response) {
 }
 
 export class GeminiClient implements LlmClient {
+  readonly label: string;
   private readonly fetch: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
 
   constructor(private readonly options: GeminiOptions) {
+    this.label = `${options.model} (Gemini)`;
     this.fetch = options.fetch ?? globalThis.fetch;
     this.sleep =
       options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));

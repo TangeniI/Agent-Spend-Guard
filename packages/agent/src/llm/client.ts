@@ -7,5 +7,7 @@ export interface LlmRequest {
 }
 
 export interface LlmClient {
+  /** The model and provider, for logs and results. */
+  label?: string;
   complete: (request: LlmRequest) => Promise<AssistantTurn>;
 }
