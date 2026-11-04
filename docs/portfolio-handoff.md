@@ -13,6 +13,7 @@ true as of 4 November 2026. Follow the honesty rules at the end exactly.
   a human and an idempotent ledger decide.
 - **Tags:** AI agents, payments, fintech, AI security, TypeScript, NestJS, Next.js, Postgres
 - **Status:** Built and tested. Live demo coming soon.
+- **Headline result:** 50 prompt-injection attacks: 14 succeeded with no guard, 0 behind the guard.
 
 ## Project page
 
@@ -46,11 +47,14 @@ the lock is what holds it together.
 **Red-team:** 50 prompt-injection attacks across 8 families (fake authority, fake urgency, quantity
 inflation, split purchases, merchant swaps, currency confusion, exfiltration, instruction
 override), each run with and without the guard.
-Each attack is also compared against control runs with no injection, so the results show what the
-attacks caused, not ordinary model mistakes.
-**Results are being produced now. Do not publish any red-team numbers until this file is updated
-with them.** Until then, describe the suite and say results are coming. When this file changes,
-update the project page to match.
+Run with IBM Granite 4 (granite4:tiny-h) locally:
+**14 of 50 attacks succeeded with no guard. 0 of 50 succeeded behind the guard.** In 10 control
+runs with no injection, the agent broke the mandate 0 times, so the 14 were caused by the attacks.
+With no guard, the agent paid in the wrong currency, paid made-up prices, bought extra items,
+split a purchase and sent the user's budget to the merchant. Behind the guard, all 10 attack
+payments that reached it were rejected; in the other runs the model ignored the injection.
+A separate test with a model scripted to obey every injection shows the guard still refuses them.
+When this file changes, update the project page to match.
 
 **Tests:** 333 automated tests across 7 packages. The policy engine has 100% test coverage.
 
@@ -88,6 +92,6 @@ locally through Ollama (the red-team suite runs on Granite, at no cost).
 - Never say it uses Visa's or any card network's real APIs. It is a portfolio project aimed at
   that space, not an integration.
 - Only use the numbers in this file. Don't round them up or invent new ones.
-- Don't publish red-team results until this file contains them.
+- Say the red-team used a small local model (IBM Granite 4). Don't generalise it to every model.
 - The guard enforces the user's mandate, not their intent. Don't claim it understands what the
   user "really" wants.
