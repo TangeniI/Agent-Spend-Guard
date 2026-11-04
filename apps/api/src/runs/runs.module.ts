@@ -14,7 +14,7 @@ const shopUrl = () => process.env.SHOP_URL ?? 'http://localhost:3002';
 function geminiFromEnv() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
-  return new GeminiClient({ apiKey, model: process.env.GEMINI_MODEL ?? 'gemini-3.8-flash' });
+  return new GeminiClient({ apiKey, model: process.env.GEMINI_MODEL ?? 'gemini-3.6-flash' });
 }
 
 @Module({})
