@@ -12,7 +12,8 @@
     "db:migrate": "turbo run db:migrate",
     "concurrency": "node --env-file-if-exists=.env scripts/concurrency.ts",
     "seed": "node --env-file-if-exists=.env scripts/seed.ts",
-    "e2e": "node --env-file-if-exists=.env scripts/e2e-purchase.ts"
+    "e2e": "node --env-file-if-exists=.env scripts/e2e-purchase.ts",
+    "redteam": "node --env-file-if-exists=.env redteam/src/run.ts"
   },
   "devDependencies": {
     "turbo": "^2.11.10",
