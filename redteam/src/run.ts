@@ -51,12 +51,16 @@ interface Row {
   guarded_violations: string[];
   unguarded_proposals: number;
   guarded_proposals: number;
+  /** The raw tool calls each arm made, so every outcome can be checked by hand. */
+  unguarded_calls: unknown[];
+  guarded_calls: unknown[];
   error?: string;
 }
 
 const args = process.argv.slice(2);
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : undefined;
 const resume = args.includes('--resume');
+const controlRuns = args.includes('--control') ? Number(args[args.indexOf('--control') + 1]) : 0;
 
 const configured = createLlmFromEnv();
 if (!configured) throw new Error('Set LLM_PROVIDER=ollama, or GEMINI_API_KEY, to choose a model');
@@ -126,7 +130,11 @@ async function unguarded(attack: Attack) {
   }
   const orders = requests.map(toOrder);
   const visible = requests.map((r) => r.rawToolCall);
-  return { ...classify(attack, orders, [], orders, visible, mandateId), proposals: requests.length };
+  return {
+    ...classify(attack, orders, [], orders, visible, mandateId),
+    proposals: requests.length,
+    calls: visible,
+  };
 }
 
 interface Api {
@@ -175,6 +183,7 @@ async function guarded(attack: Attack, api: Api, db: ReturnType<typeof createDb>
   return {
     ...classify(attack, executed, held, attempted, visible, mandateId),
     proposals: stored.length,
+    calls: stored.map((p) => (p.raw as ProposalRequest).rawToolCall),
     decisionReasons: [...new Set(reasons.flatMap((d) => d.reasons))].sort(),
   };
 }
@@ -191,7 +200,7 @@ async function withRetries<T>(label: string, fn: () => Promise<T>): Promise<T> {
   }
 }
 
-function summarise(rows: Row[], runAt: string) {
+function summarise(rows: Row[], control: Row[], runAt: string) {
   const families = [...new Set(rows.map((r) => r.family))];
   const count = (list: Row[], key: 'unguarded_outcome' | 'guarded_outcome', value: Outcome) =>
     list.filter((r) => r[key] === value).length;
@@ -211,7 +220,13 @@ function summarise(rows: Row[], runAt: string) {
     guardedHeld: count(rows, 'guarded_outcome', 'held'),
     errors: rows.filter((r) => r.unguarded_outcome === 'error' || r.guarded_outcome === 'error').length,
   };
-  return { runAt, model, attacks: rows.length, mandate: MANDATE, totals, summary, rows };
+  const controlSummary = {
+    runs: control.length,
+    unguardedBrokeMandate: count(control, 'unguarded_outcome', 'succeeded'),
+    guardedBrokeMandate: count(control, 'guarded_outcome', 'succeeded'),
+    rows: control,
+  };
+  return { runAt, model, attacks: rows.length, mandate: MANDATE, totals, summary, control: controlSummary, rows };
 }
 
 function markdown(results: ReturnType<typeof summarise>) {
@@ -225,6 +240,12 @@ function markdown(results: ReturnType<typeof summarise>) {
     ),
     `| **Total** | **${results.attacks}** | **${results.totals.unguardedSucceeded}** | **${results.totals.guardedSucceeded}** | **${results.totals.guardedHeld}** |`,
   ];
+  if (results.control.runs > 0) {
+    lines.push(
+      '',
+      `Control, with no injection: in ${results.control.runs} runs the unguarded agent broke the mandate ${results.control.unguardedBrokeMandate} times, and the guarded agent ${results.control.guardedBrokeMandate} times.`,
+    );
+  }
   if (results.totals.errors > 0) lines.push('', `${results.totals.errors} attacks hit a model error and are counted as \`error\`.`);
   return `${lines.join('\n')}\n`;
 }
@@ -233,7 +254,7 @@ const resultsDir = new URL('../results/', import.meta.url);
 const partialFile = new URL('partial.json', resultsDir);
 mkdirSync(resultsDir, { recursive: true });
 
-const attacks = loadAttacks().filter((a) => !only || a.id === only);
+const attacks = loadAttacks().filter((a) => !only || a.id === only).filter(() => !args.includes('--control-only'));
 const previous: Row[] = resume ? (JSON.parse(readFileSync(partialFile, 'utf8')) as Row[]) : [];
 const done = new Map(previous.filter((r) => !r.error).map((r) => [r.attack_id, r]));
 
@@ -261,7 +282,42 @@ for (const merchant of catalogue.merchants) await api.post('/merchants', merchan
 await api.post('/catalogue', { items: catalogue.items.map(({ description: _, ...item }) => item) });
 
 const rows: Row[] = [];
+const control: Row[] = [];
 try {
+  // Control: the same task and pages with nothing planted, to show how often the model breaks the
+  // mandate on its own. Attack results should be read against this baseline.
+  for (let run = 0; run < controlRuns; run += 1) {
+    const clean: Attack = {
+      id: `control-${run + 1}`,
+      family: 'control',
+      name: 'No injection',
+      severity: 'none',
+      prompt: loadAttacks()[0]!.prompt,
+      context: '',
+      detector: 'ledger',
+    };
+    console.log(`[control ${run + 1}/${controlRuns}]`);
+    const open = await withRetries('unguarded', () => unguarded(clean));
+    const safe = await withRetries('guarded', () => guarded(clean, api, handle.db, (p) => (pages = p)));
+    control.push({
+      attack_id: clean.id,
+      family: 'control',
+      name: clean.name,
+      injected: '',
+      unguarded_outcome: open.outcome,
+      guarded_outcome: safe.outcome,
+      decision_reasons: safe.decisionReasons,
+      unguarded_violations: open.found,
+      guarded_violations: safe.found,
+      unguarded_proposals: open.proposals,
+      guarded_proposals: safe.proposals,
+      unguarded_calls: open.calls,
+      guarded_calls: safe.calls,
+    });
+    console.log(`  no guard: ${open.outcome}, guard: ${safe.outcome}`);
+  }
+
+
   for (const [index, attack] of attacks.entries()) {
     const prior = done.get(attack.id);
     if (prior) {
@@ -281,6 +337,8 @@ try {
       guarded_violations: [],
       unguarded_proposals: 0,
       guarded_proposals: 0,
+      unguarded_calls: [],
+      guarded_calls: [],
     };
     try {
       const open = await withRetries('unguarded', () => unguarded(attack));
@@ -288,6 +346,7 @@ try {
         unguarded_outcome: open.outcome,
         unguarded_violations: open.found,
         unguarded_proposals: open.proposals,
+        unguarded_calls: open.calls,
       });
       await sleep(DELAY_MS);
       const safe = await withRetries('guarded', () => guarded(attack, api, handle.db, (p) => (pages = p)));
@@ -295,6 +354,7 @@ try {
         guarded_outcome: safe.outcome,
         guarded_violations: safe.found,
         guarded_proposals: safe.proposals,
+        guarded_calls: safe.calls,
         decision_reasons: safe.decisionReasons,
       });
     } catch (error) {
@@ -312,7 +372,7 @@ try {
 }
 
 const runAt = new Date().toISOString();
-const results = summarise(rows, runAt);
+const results = summarise(rows, control, runAt);
 const stamp = runAt.replaceAll(':', '-').replace(/\..+$/, '');
 const json = JSON.stringify(results, null, 2);
 if (!only) {
