@@ -171,7 +171,7 @@ export default function MandatePage() {
         </div>
         <div>
           <h2 className="mb-3 font-medium">Recent audit events</h2>
-          <AuditTable events={audit.data ?? []} compact />
+          <AuditTable events={audit.data ?? []} compact loading={audit.isLoading} />
         </div>
       </div>
     </>

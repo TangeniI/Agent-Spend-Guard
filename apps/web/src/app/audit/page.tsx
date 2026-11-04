@@ -56,7 +56,7 @@ export default function AuditPage() {
         </Field>
       </div>
       <ErrorText error={events.error} />
-      <AuditTable events={events.data ?? []} />
+      <AuditTable events={events.data ?? []} loading={events.isLoading} />
     </>
   );
 }

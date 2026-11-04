@@ -9,11 +9,19 @@ const ACTOR_TONES: Record<AuditEvent['actor'], Tone> = {
   system: 'grey',
 };
 
-export function AuditTable({ events, compact = false }: { events: AuditEvent[]; compact?: boolean }) {
+export function AuditTable({
+  events,
+  compact = false,
+  loading = false,
+}: {
+  events: AuditEvent[];
+  compact?: boolean;
+  loading?: boolean;
+}) {
   if (events.length === 0) {
     return (
       <Card>
-        <Empty>No events.</Empty>
+        <Empty>{loading ? 'Loading…' : 'No events.'}</Empty>
       </Card>
     );
   }
