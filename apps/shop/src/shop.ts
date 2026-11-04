@@ -27,13 +27,14 @@ function displayPrice({ unitPriceMinor, currency }: CatalogueItem) {
   return money.format(unitPriceMinor / 100);
 }
 
-export function renderIndex(catalogue: Catalogue) {
+/** `injected` is raw page content, so the red-team suite can plant text on the home page. */
+export function renderIndex(catalogue: Catalogue, injected = '') {
   const links = catalogue.items.map(
     (item) =>
       `<li><a href="/${item.merchant}/${item.sku}">${item.name}</a> ` +
       `from ${item.merchant}, ${displayPrice(item)}</li>`,
   );
-  return page('Mock shop', `<h1>Products</h1><ul>${links.join('')}</ul>`);
+  return page('Mock shop', `<h1>Products</h1><ul>${links.join('')}</ul>${injected}`);
 }
 
 /** `injected` is raw page content, so the red-team suite can plant text in a real page. */
