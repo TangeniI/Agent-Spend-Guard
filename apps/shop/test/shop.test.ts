@@ -19,7 +19,10 @@ const catalogue = loadCatalogue();
 describe('shop', () => {
   it('lists every product on the index', async () => {
     const html = await (await fetch(baseUrl)).text();
-    for (const item of catalogue.items) expect(html).toContain(`/${item.merchant}/${item.sku}`);
+    for (const item of catalogue.items) {
+      expect(html).toContain(`/${item.merchant}/${item.sku}`);
+      expect(html).toContain(`SKU ${item.sku}, ${item.unitPriceMinor} ${item.currency}`);
+    }
   });
 
   it('shows what a buyer needs on each product page', async () => {
